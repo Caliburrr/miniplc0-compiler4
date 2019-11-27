@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="100" src="https://i.imgur.com/oDXeMUQ.png" alt="pprint"/>
+  <img height="100" src="https://i.imgur.com/oDXeMUQ.png" alt="argparse"/>
 </p>
 
 <p align="center">
@@ -7,7 +7,7 @@
   <a href="https://github.com/p-ranav/argparse/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="license"/>
   </a>
-  <img src="https://img.shields.io/badge/version-1.8-blue.svg?cacheSeconds=2592000" alt="version"/>
+  <img src="https://img.shields.io/badge/version-2.0-blue.svg?cacheSeconds=2592000" alt="version"/>
 </p>
 
 ## Highlights
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   }
   catch (const std::runtime_error& err) {
     std::cout << err.what() << std::endl;
-    program.print_help();
+    std::cout << program;
     exit(0);
   }
   
@@ -100,7 +100,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -118,6 +118,27 @@ Here's what's happening:
 * The program is written so as to display something when --verbose is specified and display nothing when not.
 * Since the argument is actually optional, no error is thrown when running the program without ```--verbose```. Note that by using ```.default_value(false)```, if the optional argument isn’t used, it's value is automatically set to false. 
 * By using ```.implicit_value(true)```, the user specifies that this option is more of a flag than something that requires a value. When the user provides the --verbose option, it's value is set to true. 
+
+#### Requiring optional arguments
+
+There are scenarios where you would like to make an optional argument ***required***. As discussed above, optional arguments either begin with `-` or `--`. You can make these types of arguments required like so:
+
+```cpp
+program.add_argument("-o", "--output")
+  .required()
+  .help("specify the output file.");
+```
+
+If the user does not provide a value for this parameter, an exception is thrown. 
+
+Alternatively, you could provide a default value like so:
+
+```cpp
+program.add_argument("-o", "--output")
+  .default_value(std::string("-"))
+  .required()
+  .help("specify the output file.");
+```
 
 ### Negative Numbers
 
@@ -140,7 +161,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -173,7 +194,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -200,7 +221,7 @@ The square of 4 is 16
 
 ### Printing Help
 
-```ArgumentParser.print_help()``` print a help message, including the program usage and information about the arguments registered with the ArgumentParser. For the previous example, here's the default help message:
+`std::cout << program` prints a help message, including the program usage and information about the arguments registered with the `ArgumentParser`. For the previous example, here's the default help message:
 
 ```
 $ ./main --help
@@ -213,6 +234,8 @@ Optional arguments:
 -h, --help     show this help message and exit
 -v, --verbose  enable verbose logging
 ```
+
+You may also get the help message in string via `program.help().str()`.
 
 ### List of Arguments
 
@@ -230,7 +253,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -259,7 +282,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -291,7 +314,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -323,10 +346,116 @@ Here's what's happening:
   - argv is further parsed to identify the inputs mapped to ```-c```.
   - If argparse cannot find any arguments to map to c, then c defaults to {0.0, 0.0} as defined by ```.default_value```
 
+### Gathering Remaining Arguments
+
+`argparse` supports gathering "remaining" arguments at the end of the command, e.g., for use in a compiler:
+
+```bash
+$ compiler file1 file2 file3
+```
+
+To enable this, simply create an argument and mark it as `remaining`. All remaining arguments passed to argparse are gathered here.
+
+```cpp
+argparse::ArgumentParser program("compiler");                                                             
+                                                                                                          
+program.add_argument("files")                                                                             
+  .remaining();                                                                                           
+                                                                                                          
+try {                                                                                                     
+  program.parse_args(argc, argv);                                                                         
+}                                                                                                         
+catch (const std::runtime_error& err) {                                                                   
+  std::cout << err.what() << std::endl;                                                                   
+  std::cout << program;                                                                                   
+  exit(0);                                                                                                
+}                                                                                                         
+
+try {
+  auto files = program.get<std::vector<std::string>>("files");
+  std::cout << files.size() << " files provided" << std::endl;                                           
+  for (auto& file : files)                                                             
+    std::cout << file << std::endl;
+} catch (std::logic_error& e) {
+  std::cout << "No files provided" << std::endl;
+}                                                                                                  
+```
+
+When no arguments are provided:
+
+```bash
+$ ./compiler
+No files provided
+```
+
+and when multiple arguments are provided:
+
+```bash
+$ ./compiler foo.txt bar.txt baz.txt
+3 files provided
+foo.txt
+bar.txt
+baz.txt
+```
+
+The process of gathering remaining arguments plays nicely with optional arguments too:
+
+```cpp
+argparse::ArgumentParser program("compiler");                                                             
+
+program.add_arguments("-o")
+  .default_value(std::string("a.out"));
+
+program.add_argument("files")                                                                             
+  .remaining();                                                                                           
+                                                                                                          
+try {                                                                                                     
+  program.parse_args(argc, argv);                                                                         
+}                                                                                                         
+catch (const std::runtime_error& err) {                                                                   
+  std::cout << err.what() << std::endl;                                                                   
+  std::cout << program;                                                                                   
+  exit(0);                                                                                                
+}
+
+auto output_filename = program.get<std::string>("-o");
+std::cout << "Output filename: " << output_filename << std::endl;
+
+try {
+  auto files = program.get<std::vector<std::string>>("files");
+  std::cout << files.size() << " files provided" << std::endl;                                           
+  for (auto& file : files)                                                             
+    std::cout << file << std::endl;
+} catch (std::logic_error& e) {
+  std::cout << "No files provided" << std::endl;
+}
+
+```
+
+```bash
+$ ./compiler -o main foo.cpp bar.cpp baz.cpp
+Output filename: main
+3 files provided
+foo.cpp
+bar.cpp
+baz.cpp
+```
+
+***NOTE***: Remember to place all optional arguments BEFORE the remaining argument. If the optional argument is placed after the remaining arguments, it too will be deemed remaining:
+
+```bash
+$ ./compiler foo.cpp bar.cpp baz.cpp -o main
+5 arguments provided
+foo.cpp
+bar.cpp
+baz.cpp
+-o
+main
+```
 
 ### Parent Parsers
 
-Sometimes, several parsers share a common set of arguments. Rather than repeating the definitions of these arguments, a single parser with all the shared arguments can be added as a parent to another ArgumentParser instance. The ```.add_parents``` method takes a list of ArgumentParser objects, collects all the positional and optional actions from them, and adds these actions to the ArgumentParser object being constructed:
+Sometimes, several parsers share a common set of arguments. Rather than repeating the definitions of these arguments, a single parser with all the common arguments can be added as a parent to another ArgumentParser instance. The ```.add_parents``` method takes a list of ArgumentParser objects, collects all the positional and optional actions from them, and adds these actions to the ArgumentParser object being constructed:
 
 ```cpp
 argparse::ArgumentParser parent_parser("main");
@@ -367,7 +496,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -403,7 +532,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -445,7 +574,7 @@ try {
 }
 catch (const std::runtime_error& err) {
   std::cout << err.what() << std::endl;
-  program.print_help();
+  std::cout << program;
   exit(0);
 }
 
@@ -458,13 +587,38 @@ $ ./main fex
 baz
 ```
 
-## Supported Compilers
-* GCC >= 7.0.0
-* Clang >= 4.0
-* MSVC >= 2017
+## Supported Toolchains
+
+| Compiler             | Standard Library | Test Environment   |
+| :------------------- | :--------------- | :----------------- |
+| GCC >= 8.3.0         | libstdc++        | Ubuntu 18.04       |
+| Clang >= 7.0.0       | libc++           | Xcode 10.2         |
+| MSVC >= 14.16        | Microsoft STL    | Visual Studio 2017 |
 
 ## Contributing
 Contributions are welcome, have a look at the [CONTRIBUTING.md](CONTRIBUTING.md) document for more information.
+
+## Contributors ✨
+
+Thanks goes to these wonderful people:
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore -->
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/svanveen"><img src="https://avatars1.githubusercontent.com/u/23560108?s=400&v=4" width="100px;" alt="svanveen"/><br /><sub><b>svanveen</b></sub></a></td>
+    <td align="center"><a href="https://github.com/lichray"><img src="https://avatars0.githubusercontent.com/u/433009?s=400&v=4" width="100px;" alt="Zhihao Yuan"/><br /><sub><b>Zhihao Yuan</b></sub></a></td>
+    <td align="center"><a href="https://github.com/wtdcode"><img src="https://avatars2.githubusercontent.com/u/30623163?s=400&v=4" width="100px;" alt="Mio"/><br /><sub><b>Mio</b></sub></a></td>
+    <td align="center"><a href="https://github.com/zhihaoy"><img src="https://avatars0.githubusercontent.com/u/43971430?s=400&v=4" width="100px;" alt="zhihaoy"/><br /><sub><b>zhihaoy</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Jackojc"><img src="https://avatars1.githubusercontent.com/u/4932816?s=400&v=4" width="100px;" alt="Jack Clarke"/><br /><sub><b>Jack Clarke</b></sub></a></td>
+    <td align="center"><a href="https://github.com/SuperWig"><img src="https://avatars2.githubusercontent.com/u/2692096?s=400&v=4" width="100px;" alt="Daniel Marshall"/><br /><sub><b>Daniel Marshall</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/MU001999"><img src="https://avatars3.githubusercontent.com/u/21022101?s=400&v=4" width="100px;" alt="mupp"/><br /><sub><b>mupp</b></sub></a></td>
+  </tr>
+</table>
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## License
 The project is available under the [MIT](https://opensource.org/licenses/MIT) license.

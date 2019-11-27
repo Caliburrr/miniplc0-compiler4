@@ -161,8 +161,10 @@ struct scan_handler : error_handler {
   void on_text(const char* begin, const char* end) {
     auto size = end - begin;
     auto it = scan_ctx_.begin();
-    if (it + size > scan_ctx_.end() || !std::equal(begin, end, it))
+    if (it + size > scan_ctx_.end() ||
+        !std::equal(begin, end, make_checked(it, size))) {
       on_error("invalid input");
+    }
     scan_ctx_.advance_to(it + size);
   }
 
@@ -199,7 +201,8 @@ struct scan_handler : error_handler {
       scan_ctx_.advance_to(it);
       break;
     }
-    default:
+    case scan_type::none_type:
+    case scan_type::custom_type:
       assert(false);
     }
   }
@@ -215,7 +218,7 @@ struct scan_handler : error_handler {
 
 template <typename... Args>
 std::array<internal::scan_arg, sizeof...(Args)> make_scan_args(Args&... args) {
-  return std::array<internal::scan_arg, sizeof...(Args)>{args...};
+  return {{args...}};
 }
 
 string_view::iterator vscan(string_view input, string_view format_str,

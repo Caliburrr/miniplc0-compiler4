@@ -1,8 +1,9 @@
-#pragma once
-#include <catch.hpp>
+#include <doctest.hpp>
 #include <argparse.hpp>
 
-TEST_CASE("Add parent parsers", "[parent_parsers]") {
+using doctest::test_suite;
+
+TEST_CASE("Add parent parsers" * test_suite("parent_parsers")) {
   argparse::ArgumentParser parent_parser("main");
   parent_parser.add_argument("--verbose")
     .default_value(false)
@@ -12,9 +13,11 @@ TEST_CASE("Add parent parsers", "[parent_parsers]") {
   child_parser.add_parents(parent_parser);
   child_parser.parse_args({ "./main", "--verbose"});
   REQUIRE(child_parser["--verbose"] == true);
+  REQUIRE(parent_parser["--verbose"] == false);
 }
 
-TEST_CASE("Add parent to multiple parent parsers", "[parent_parsers]") {
+TEST_CASE("Add parent to multiple parent parsers" *
+          test_suite("parent_parsers")) {
   argparse::ArgumentParser parent_parser("main");
   parent_parser.add_argument("--parent")
     .default_value(0)
@@ -26,6 +29,7 @@ TEST_CASE("Add parent to multiple parent parsers", "[parent_parsers]") {
   foo_parser.parse_args({ "./main", "--parent", "2", "XXX" });
   REQUIRE(foo_parser["--parent"] == 2);
   REQUIRE(foo_parser["foo"] == std::string("XXX"));
+  REQUIRE(parent_parser["--parent"] == 0);
 
   argparse::ArgumentParser bar_parser("bar");
   bar_parser.add_argument("--bar");

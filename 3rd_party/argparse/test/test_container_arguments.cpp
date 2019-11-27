@@ -1,9 +1,10 @@
-#pragma once
-#include <catch.hpp>
+#include <doctest.hpp>
 #include <argparse.hpp>
 #include <test_utility.hpp>
 
-TEST_CASE("Parse vector of arguments", "[vector]") {
+using doctest::test_suite;
+
+TEST_CASE("Parse vector of arguments" * test_suite("vector")) {
   argparse::ArgumentParser program("test");
   program.add_argument("input")
     .nargs(2);
@@ -16,7 +17,7 @@ TEST_CASE("Parse vector of arguments", "[vector]") {
   REQUIRE(inputs[1] == "thrust_profile.csv");
 }
 
-TEST_CASE("Parse list of arguments", "[vector]") {
+TEST_CASE("Parse list of arguments" * test_suite("vector")) {
   argparse::ArgumentParser program("test");
   program.add_argument("input")
     .nargs(2);
@@ -29,7 +30,8 @@ TEST_CASE("Parse list of arguments", "[vector]") {
   REQUIRE(testutility::get_from_list(inputs, 1) == "thrust_profile.csv");
 }
 
-TEST_CASE("Parse list of arguments with default values", "[vector]") {
+TEST_CASE("Parse list of arguments with default values" *
+          test_suite("vector")) {
   argparse::ArgumentParser program("test");
   program.add_argument("--input")
     .default_value(std::list<int>{1, 2, 3, 4, 5})
@@ -47,7 +49,8 @@ TEST_CASE("Parse list of arguments with default values", "[vector]") {
   REQUIRE(program["--input"] == std::list<int>{1, 2, 3, 4, 5});
 }
 
-TEST_CASE("Parse list of arguments and save in an object", "[vector]") {
+TEST_CASE("Parse list of arguments and save in an object" *
+          test_suite("vector")) {
 
   struct ConfigManager {
     std::vector<std::string> files;
